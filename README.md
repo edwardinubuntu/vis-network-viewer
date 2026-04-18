@@ -70,6 +70,8 @@ Create a `files` folder in the root directory and drop JSON files into it. The f
 
 ### How to start
 
+#### Python (local)
+
 Use any tool that supports an HTTP server. For Python:
 
 ```bash
@@ -77,3 +79,23 @@ python3 -m http.server 8002
 ```
 
 Port 8002 can be changed as needed.
+
+#### Docker
+
+Build the image and run a container exposing port 8000:
+
+```bash
+# Build (no cache)
+docker build --no-cache -t network-viewer .
+
+# Run in the background
+docker run -d --rm -p 8000:8000 --name network-viewer network-viewer
+```
+
+The app will be available at `http://localhost:8000`.
+
+To stop the container:
+
+```bash
+docker stop network-viewer
+```
