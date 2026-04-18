@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>互動式人物關係引擎</title>
+    <!-- Favicon: SVG 格式 -->
+    <link rel="icon" type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234f46e5' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='18' cy='5' r='3'%3E%3C/circle%3E%3Ccircle cx='6' cy='12' r='3'%3E%3C/circle%3E%3Ccircle cx='18' cy='19' r='3'%3E%3C/circle%3E%3Cline x1='8.59' y1='13.51' x2='15.42' y2='17.49'%3E%3C/line%3E%3Cline x1='15.41' y1='6.51' x2='8.59' y2='10.49'%3E%3C/line%3E%3C/svg%3E">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Tailwind 深色模式配置
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        #network-box {
+            width: 100%;
+            height: 600px;
+            border-radius: 12px;
+            transition: background-color 0.3s ease;
+        }
+
+        .graph-layout {
+            align-items: stretch;
+        }
+
+        @media (min-width: 1024px) {
+            .graph-layout {
+                grid-template-columns: minmax(0, 1fr) 320px;
+            }
+
+            #network-box {
+                height: 78vh;
+                min-height: 720px;
+                max-height: 1000px;
+            }
+        }
+
+        @media (min-width: 1440px) {
+            .graph-layout {
+                grid-template-columns: minmax(0, 1fr) 340px;
+            }
+
+            #network-box {
+                height: 82vh;
+            }
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        .dark ::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-100 dark:bg-slate-900 transition-colors duration-300 p-4 md:p-8">
+
+    <div class="mx-auto w-full max-w-[1800px] px-4 md:px-6 xl:px-8">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <div>
+                <h1 id="main-title" class="text-3xl font-bold text-slate-800 dark:text-slate-100">請選擇數據集</h1>
+                <p class="text-slate-500 dark:text-slate-400 font-medium">自動掃描 ./files/ 目錄下的 JSON 檔案</p>
+            </div>
+
+            <div class="flex items-center gap-3">
+
+
+                <div
+                    class="flex items-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm overflow-hidden">
+
+                    <button id="spacing-expand" title="增加節點距離"
+                        class="p-2.5 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all border-r border-slate-200 dark:border-slate-700">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 3H3v6M15 3h6v6M9 21H3v-6M15 21h6v-6" />
+                        </svg>
+                    </button>
+
+                    <button id="spacing-collapse" title="縮小節點距離"
+                        class="p-2.5 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 9H3V3M15 9h6V3M9 15H3v6M15 15h6v6" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- 縮放控制按鈕組 -->
+                <div
+                    class="flex items-center bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm overflow-hidden">
+                    <button id="zoom-in" title="放大"
+                        class="p-2.5 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all border-r border-slate-200 dark:border-slate-700">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4">
+                            </path>
+                        </svg>
+                    </button>
+                    <button id="zoom-out" title="縮小"
+                        class="p-2.5 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- 主題切換按鈕 -->
+                <button id="theme-toggle"
+                    class="p-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all">
+                    <!-- 太陽圖示 -->
+                    <svg id="sun-icon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 3v1m0 16v1m9-9h-1M4 9H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M12 5a7 7 0 100 14 7 7 0 000-14z">
+                        </path>
+                    </svg>
+                    <!-- 月亮圖示 -->
+                    <svg id="moon-icon" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z">
+                        </path>
+                    </svg>
+                </button>
+
+                <!-- 資料控制組 (重新整理 + 下拉選單) -->
+                <div
+                    class="flex items-center gap-0 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <button id="refresh-data" title="重新整理當前資料"
+                        class="p-2.5 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all border-r border-slate-200 dark:border-slate-700">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                            </path>
+                        </svg>
+                    </button>
+                    <select id="data-selector"
+                        class="bg-transparent text-slate-700 dark:text-slate-200 font-medium px-3 py-1 focus:outline-none cursor-pointer h-full">
+                        <option value="">-- 正在掃描目錄... --</option>
+                    </select>
+                </div>
+            </div>
+        </header>
+
+        <div class="graph-layout grid grid-cols-1 gap-6 xl:gap-8">
+            <div class="graph-main min-w-0">
+                <div id="network-box"
+                    class="bg-white dark:bg-slate-800 shadow-inner border border-slate-200 dark:border-slate-700 rounded-xl">
+                </div>
+            </div>
+
+            <!-- 資訊卡 -->
+            <aside class="graph-side min-w-0">
+                <div id="info-panel"
+                    class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md h-full border border-slate-200 dark:border-slate-700 transition-colors">
+                    <h2 class="text-xl font-bold text-indigo-900 dark:text-indigo-400 mb-4">節點詳情</h2>
+                    <div id="info-content" class="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">
+                        請點擊圖中人物查看詳細資訊...
+                    </div>
+                </div>
+        </div>
+    </div>
+    </div>
+
+    <script>
+        // 狀態管理
+        let nodes = new vis.DataSet([]);
+        let edges = new vis.DataSet([]);
+
+        let spacingLevel = 200; // 初始節點距離
+        const MIN_SPACING = 80;
+        const MAX_SPACING = 600;
+
+        let network = null;
+        let currentTheme = localStorage.getItem('theme') || 'light';
+
+        const container = document.getElementById('network-box');
+        const selector = document.getElementById('data-selector');
+        const titleEl = document.getElementById('main-title');
+        const themeBtn = document.getElementById('theme-toggle');
+        const refreshBtn = document.getElementById('refresh-data');
+
+        // 主題初始化與切換
+        function initTheme() {
+            if (currentTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+                document.getElementById('sun-icon').classList.remove('hidden');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.getElementById('moon-icon').classList.remove('hidden');
+            }
+        }
+
+        themeBtn.addEventListener('click', () => {
+            const isDark = document.documentElement.classList.toggle('dark');
+            currentTheme = isDark ? 'dark' : 'light';
+            localStorage.setItem('theme', currentTheme);
+
+            document.getElementById('sun-icon').classList.toggle('hidden');
+            document.getElementById('moon-icon').classList.toggle('hidden');
+
+            updateNetworkTheme();
+        });
+
+        // 縮放控制邏輯
+        document.getElementById('zoom-in').addEventListener('click', () => {
+            if (network) {
+                const currentScale = network.getScale();
+                network.moveTo({
+                    scale: currentScale * 1.2,
+                    animation: { duration: 300, easingFunction: 'easeInOutQuad' }
+                });
+            }
+        });
+
+        document.getElementById('zoom-out').addEventListener('click', () => {
+            if (network) {
+                const currentScale = network.getScale();
+                network.moveTo({
+                    scale: currentScale * 0.8,
+                    animation: { duration: 300, easingFunction: 'easeInOutQuad' }
+                });
+            }
+        });
+
+        // 重新整理當前資料
+        refreshBtn.addEventListener('click', () => {
+            const currentFile = selector.value;
+            if (currentFile) {
+                // 添加按鈕動畫回饋
+                refreshBtn.querySelector('svg').classList.add('animate-spin');
+                loadData(currentFile).finally(() => {
+                    setTimeout(() => {
+                        refreshBtn.querySelector('svg').classList.remove('animate-spin');
+                    }, 500);
+                });
+            } else {
+                // 如果沒選檔案，則重新掃描目錄
+                loadManifest();
+            }
+        });
+
+        // --- 自動掃描目錄下的 JSON 檔案 ---
+        async function loadManifest() {
+            try {
+                // 嘗試讀取 ./files/ 目錄 (依賴伺服器的 Directory Listing 功能)
+                const response = await fetch('./files/');
+                if (!response.ok) throw new Error('無法讀取目錄清單');
+
+                const htmlText = await response.text();
+
+                // 使用 DOMParser 解析伺服器回傳的 HTML
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlText, 'text/html');
+                const links = doc.querySelectorAll('a');
+
+                selector.innerHTML = '<option value="">-- 請選擇劇本 --</option>';
+
+                let count = 0;
+                // 使用迴圈檢查每個連結的 href 是否以 .json 結尾
+                for (let i = 0; i < links.length; i++) {
+                    const href = links[i].getAttribute('href');
+
+                    // 過濾出 .json 檔案，並處理可能的路徑編碼
+                    if (href && href.toLowerCase().endsWith('.json')) {
+                        // 取得純檔名 (處理 URL 編碼如中文字)
+                        const fileName = decodeURIComponent(href.split('/').pop());
+
+                        const option = document.createElement('option');
+                        option.value = fileName;
+                        // 顯示名稱去掉 .json 副檔名
+                        option.textContent = fileName.replace(/\.json$/i, '');
+                        selector.appendChild(option);
+                        count++;
+                    }
+                }
+
+                if (count === 0) {
+                    selector.innerHTML = '<option value="">目錄中無 JSON 檔案</option>';
+                }
+
+            } catch (error) {
+                console.warn('自動掃描失敗：', error.message);
+                selector.innerHTML = '<option value="">掃描失敗 (請檢查伺服器設定)</option>';
+            }
+        }
+
+        // 取得 Vis.js 配置 (根據當前主題)
+        function getNetworkOptions(data = {}) {
+            const isDark = document.documentElement.classList.contains('dark');
+
+            const jsonOptions = data?.options || {};
+
+            const nodes_size = jsonOptions?.nodes?.size ?? 22;
+            const spacingLevel = jsonOptions?.physics?.barnesHut?.springLength ?? 160;
+
+            return {
+                nodes: {
+                    shape: 'dot',
+                    size: nodes_size,
+                    font: {
+                        size: 14,
+                        color: isDark ? '#f1f5f9' : '#334155',
+                        strokeWidth: 0
+                    },
+                    borderWidth: 2,
+                    shadow: true
+                },
+                edges: {
+                    arrows: 'to',
+                    color: {
+                        color: isDark ? '#475569' : '#cbd5e1',
+                        highlight: '#6366f1',
+                        hover: '#818cf8'
+                    },
+                    font: {
+                        align: 'middle',
+                        color: isDark ? '#94a3b8' : '#64748b',
+                        size: 11,
+                        background: isDark ? '#1e293b' : '#ffffff'
+                    },
+                    width: 1.5,
+                    smooth: {
+                        type: 'continuous'
+                    }
+                },
+                physics: {
+                    enabled: true,
+                    barnesHut: {
+                        springLength: spacingLevel,
+                        gravitationalConstant: -2000,
+                        centralGravity: 0.3,
+                        springConstant: 0.04,
+                        damping: 0.09
+                    }
+                },
+                interaction: {
+                    hover: true,
+                    zoomView: false,
+                    dragView: true
+                }
+            };
+        }
+
+        function updateSpacing(newSpacing) {
+            spacingLevel = Math.max(MIN_SPACING, Math.min(MAX_SPACING, newSpacing));
+
+            if (!network) return;
+
+            network.setOptions({
+                physics: {
+                    enabled: true,
+                    barnesHut: {
+                        springLength: spacingLevel,
+                        gravitationalConstant: -2000,
+                        centralGravity: 0.3,
+                        springConstant: 0.04,
+                        damping: 0.09
+                    }
+                }
+            });
+
+            network.stabilize(200);
+        }
+
+        document.getElementById('spacing-expand').addEventListener('click', () => {
+            updateSpacing(spacingLevel + 40);
+        });
+
+        document.getElementById('spacing-collapse').addEventListener('click', () => {
+            updateSpacing(spacingLevel - 40);
+        });
+
+        function updateNetworkTheme() {
+            if (network) {
+                network.setOptions(getNetworkOptions());
+            }
+        }
+
+        function resetHighlight() {
+            const isDark = document.documentElement.classList.contains('dark');
+
+            const allNodes = nodes.get().map(node => ({
+                id: node.id,
+                color: undefined,
+                font: {
+                    color: isDark ? '#f1f5f9' : '#334155'
+                }
+            }));
+
+            const allEdges = edges.get().map(edge => ({
+                id: edge.id,
+                color: {
+                    color: isDark ? '#475569' : '#cbd5e1',
+                    highlight: '#6366f1',
+                    hover: '#818cf8',
+                    opacity: 1
+                },
+                width: 1.5,
+                hidden: false
+            }));
+
+            nodes.update(allNodes);
+            edges.update(allEdges);
+        }
+
+        function highlightConnected(nodeId) {
+            const isDark = document.documentElement.classList.contains('dark');
+
+            const connectedNodeIds = network.getConnectedNodes(nodeId);
+            const connectedEdgeIds = network.getConnectedEdges(nodeId);
+
+            const relatedNodes = new Set([nodeId, ...connectedNodeIds]);
+            const relatedEdges = new Set(connectedEdgeIds);
+
+            const fadedNodeColor = isDark ? 'rgba(148,163,184,0.18)' : 'rgba(148,163,184,0.25)';
+            const fadedFontColor = isDark ? 'rgba(241,245,249,0.25)' : 'rgba(51,65,85,0.25)';
+            const normalFontColor = isDark ? '#f1f5f9' : '#334155';
+
+            const nodeUpdates = nodes.get().map(node => {
+                const active = relatedNodes.has(node.id);
+                return {
+                    id: node.id,
+                    color: active
+                        ? undefined
+                        : {
+                            background: fadedNodeColor,
+                            border: fadedNodeColor,
+                            highlight: {
+                                background: fadedNodeColor,
+                                border: fadedNodeColor
+                            },
+                            hover: {
+                                background: fadedNodeColor,
+                                border: fadedNodeColor
+                            }
+                        },
+                    font: {
+                        color: active ? normalFontColor : fadedFontColor
+                    }
+                };
+            });
+
+            const edgeUpdates = edges.get().map(edge => {
+                const active = relatedEdges.has(edge.id);
+                return {
+                    id: edge.id,
+                    color: active
+                        ? {
+                            color: isDark ? '#6366f1' : '#4f46e5',
+                            highlight: '#6366f1',
+                            hover: '#818cf8',
+                            opacity: 1
+                        }
+                        : {
+                            color: isDark ? 'rgba(71,85,105,0.15)' : 'rgba(203,213,225,0.25)',
+                            highlight: isDark ? 'rgba(71,85,105,0.15)' : 'rgba(203,213,225,0.25)',
+                            hover: isDark ? 'rgba(71,85,105,0.15)' : 'rgba(203,213,225,0.25)',
+                            opacity: 1
+                        },
+                    width: active ? 2.5 : 1,
+                    hidden: false
+                };
+            });
+
+            nodes.update(nodeUpdates);
+            edges.update(edgeUpdates);
+        }
+
+        let currentGraphData = null;
+
+        // 核心功能：讀取並載入 JSON
+        async function loadData(fileName) {
+            if (!fileName) return;
+
+            try {
+                // 補上目錄路徑進行讀取，並添加 timestamp 避免快取
+                const response = await fetch(`./files/${fileName}?t=${new Date().getTime()}`);
+                if (!response.ok) throw new Error('檔案讀取失敗');
+
+                const data = await response.json();
+
+                currentGraphData = data;
+
+                titleEl.innerText = data.title || fileName.replace(/\.json$/i, '');
+                nodes.clear();
+                edges.clear();
+                nodes.add(data.nodes);
+                edges.add(data.edges);
+
+                const networkOptions = getNetworkOptions(data);
+
+                if (!network) {
+                    network = new vis.Network(container, { nodes, edges }, networkOptions);
+
+                    network.on("click", (params) => {
+                        const infoContent = document.getElementById('info-content');
+                        if (params.nodes.length > 0) {
+                            const nodeId = params.nodes[0];
+                            const nodeData = nodes.get(nodeId);
+
+                            highlightConnected(nodeId);
+
+                            const description = nodeData.bio || nodeData.title || '暫無詳細描述。';
+
+                            infoContent.innerHTML = `
+                                <div class="animate-in fade-in duration-300">
+                                    <b class="text-xl text-slate-900 dark:text-white block mb-1">${nodeData.label}</b>
+                                    <span class="inline-block px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300 text-xs font-bold uppercase mb-4">${nodeData.group}</span>
+                                    <p class="text-slate-600 dark:text-slate-300 border-t border-slate-100 dark:border-slate-700 pt-4">${description}</p>
+                                </div>
+                            `;
+                        } else {
+                            resetHighlight();
+                            infoContent.innerHTML = `<span class="italic">請點擊圖中人物查看詳細資訊...</span>`;
+                        }
+                    });
+                } else {
+                    network.setOptions(networkOptions);
+                }
+
+                setTimeout(() => network.fit(), 200);
+
+            } catch (error) {
+                console.error(error);
+                alert('無法載入資料檔案。');
+            }
+        }
+
+        selector.addEventListener('change', (e) => loadData(e.target.value));
+
+        window.onload = () => {
+            initTheme();
+            loadManifest();
+        };
+    </script>
+</body>
+
+</html>
