@@ -141,7 +141,7 @@
                         class="p-2.5 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all border-r border-slate-200 dark:border-slate-700">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357-2H15">
                             </path>
                         </svg>
                     </button>
@@ -172,8 +172,8 @@
                         Click a node to view details...
                     </div>
                 </div>
+            </aside>
         </div>
-    </div>
     </div>
 
     <script>
@@ -187,6 +187,7 @@
 
         let network = null;
         let currentTheme = localStorage.getItem('theme') || 'light';
+        let originalEdgeLabels = {};
 
         const container = document.getElementById('network-box');
         const selector = document.getElementById('data-selector');
@@ -381,91 +382,75 @@
         function resetHighlight() {
             const isDark = document.documentElement.classList.contains('dark');
 
-            const allNodes = nodes.get().map(node => ({
+            nodes.update(nodes.get().map(node => ({
                 id: node.id,
                 color: undefined,
                 font: {
                     color: isDark ? '#f1f5f9' : '#334155'
                 }
-            }));
+            })));
 
-            const allEdges = edges.get().map(edge => ({
+            edges.update(edges.get().map(edge => ({
                 id: edge.id,
+                label: originalEdgeLabels[edge.id] ?? '',
                 color: {
                     color: isDark ? '#475569' : '#cbd5e1',
-                    highlight: '#6366f1',
-                    hover: '#818cf8',
                     opacity: 1
                 },
-                width: 1.5,
-                hidden: false
-            }));
-
-            nodes.update(allNodes);
-            edges.update(allEdges);
+                font: {
+                    color: isDark ? '#94a3b8' : '#64748b',
+                    background: isDark ? '#1e293b' : '#ffffff',
+                    size: 11
+                },
+                width: 1.5
+            })));
         }
 
         function highlightConnected(nodeId) {
             const isDark = document.documentElement.classList.contains('dark');
 
-            const connectedNodeIds = network.getConnectedNodes(nodeId);
-            const connectedEdgeIds = network.getConnectedEdges(nodeId);
-
-            const relatedNodes = new Set([nodeId, ...connectedNodeIds]);
-            const relatedEdges = new Set(connectedEdgeIds);
+            const connectedNodeIds = new Set(network.getConnectedNodes(nodeId));
+            const connectedEdgeIds = new Set(network.getConnectedEdges(nodeId));
+            connectedNodeIds.add(nodeId);
 
             const fadedNodeColor = isDark ? 'rgba(148,163,184,0.18)' : 'rgba(148,163,184,0.25)';
             const fadedFontColor = isDark ? 'rgba(241,245,249,0.25)' : 'rgba(51,65,85,0.25)';
             const normalFontColor = isDark ? '#f1f5f9' : '#334155';
 
-            const nodeUpdates = nodes.get().map(node => {
-                const active = relatedNodes.has(node.id);
+            nodes.update(nodes.get().map(node => {
+                const active = connectedNodeIds.has(node.id);
                 return {
                     id: node.id,
                     color: active
                         ? undefined
                         : {
                             background: fadedNodeColor,
-                            border: fadedNodeColor,
-                            highlight: {
-                                background: fadedNodeColor,
-                                border: fadedNodeColor
-                            },
-                            hover: {
-                                background: fadedNodeColor,
-                                border: fadedNodeColor
-                            }
+                            border: fadedNodeColor
                         },
                     font: {
                         color: active ? normalFontColor : fadedFontColor
                     }
                 };
-            });
+            }));
 
-            const edgeUpdates = edges.get().map(edge => {
-                const active = relatedEdges.has(edge.id);
+            edges.update(edges.get().map(edge => {
+                const active = connectedEdgeIds.has(edge.id);
                 return {
                     id: edge.id,
-                    color: active
-                        ? {
-                            color: isDark ? '#6366f1' : '#4f46e5',
-                            highlight: '#6366f1',
-                            hover: '#818cf8',
-                            opacity: 1
-                        }
-                        : {
-                            color: isDark ? 'rgba(71,85,105,0.15)' : 'rgba(203,213,225,0.25)',
-                            highlight: isDark ? 'rgba(71,85,105,0.15)' : 'rgba(203,213,225,0.25)',
-                            hover: isDark ? 'rgba(71,85,105,0.15)' : 'rgba(203,213,225,0.25)',
-                            opacity: 1
-                        },
-                    width: active ? 2.5 : 1,
-                    hidden: false
+                    // 修正關鍵：非關聯 edge 將 label 清空、size 設為 0、顏色設為透明
+                    label: active ? (originalEdgeLabels[edge.id] ?? '') : '',
+                    color: {
+                        color: active ? (isDark ? '#6366f1' : '#4f46e5') : (isDark ? 'rgba(71,85,105,0.1)' : 'rgba(203,213,225,0.2)'),
+                        opacity: 1
+                    },
+                    font: {
+                        color: active ? (isDark ? '#94a3b8' : '#64748b') : 'rgba(0,0,0,0)',
+                        background: active ? (isDark ? '#1e293b' : '#ffffff') : 'rgba(0,0,0,0)',
+                        size: active ? 11 : 0
+                    },
+                    width: active ? 2.5 : 1
                 };
-            });
-
-            nodes.update(nodeUpdates);
-            edges.update(edgeUpdates);
+            }));
         }
 
         let activeGroupFilter = null;
@@ -482,9 +467,7 @@
                     id: node.id,
                     color: active ? undefined : {
                         background: fadedNodeColor,
-                        border: fadedNodeColor,
-                        highlight: { background: fadedNodeColor, border: fadedNodeColor },
-                        hover: { background: fadedNodeColor, border: fadedNodeColor }
+                        border: fadedNodeColor
                     },
                     font: { color: active ? normalFontColor : fadedFontColor }
                 };
@@ -492,12 +475,12 @@
 
             const edgeUpdates = edges.get().map(edge => ({
                 id: edge.id,
+                label: '',
                 color: {
                     color: isDark ? 'rgba(71,85,105,0.15)' : 'rgba(203,213,225,0.25)',
-                    highlight: isDark ? 'rgba(71,85,105,0.15)' : 'rgba(203,213,225,0.25)',
-                    hover: isDark ? 'rgba(71,85,105,0.15)' : 'rgba(203,213,225,0.25)',
                     opacity: 1
                 },
+                font: { size: 0 },
                 width: 1
             }));
 
@@ -549,8 +532,6 @@
             container.classList.remove('hidden');
         }
 
-        let currentGraphData = null;
-
         async function loadData(fileName) {
             if (!fileName) return;
 
@@ -560,13 +541,18 @@
 
                 const data = await response.json();
 
-                currentGraphData = data;
-
                 titleEl.innerText = data.title || fileName.replace(/\.json$/i, '');
                 nodes.clear();
                 edges.clear();
                 nodes.add(data.nodes);
                 edges.add(data.edges);
+
+                // 備份原始標籤
+                originalEdgeLabels = {};
+                edges.get().forEach(e => {
+                    originalEdgeLabels[e.id] = e.label || '';
+                });
+
                 renderGroupButtons(data);
 
                 const networkOptions = getNetworkOptions(data);
