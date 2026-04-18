@@ -72,7 +72,7 @@ Create a `files` folder in the root directory and drop JSON files into it. The f
 
 Use any tool that supports an HTTP server. For Python:
 
-```
+```bash
 python3 -m http.server 8002
 ```
 
