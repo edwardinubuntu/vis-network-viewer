@@ -156,6 +156,9 @@
             </div>
         </header>
 
+        <!-- Group filter buttons -->
+        <div id="group-filters" class="hidden mb-4 flex flex-wrap gap-2"></div>
+
         <div class="graph-layout grid grid-cols-1 gap-6 xl:gap-8">
             <div class="graph-main min-w-0">
                 <div id="network-box"
@@ -481,6 +484,87 @@
             edges.update(edgeUpdates);
         }
 
+        let activeGroupFilter = null;
+
+        function highlightGroup(groupKey) {
+            const isDark = document.documentElement.classList.contains('dark');
+            const fadedNodeColor = isDark ? 'rgba(148,163,184,0.18)' : 'rgba(148,163,184,0.25)';
+            const fadedFontColor = isDark ? 'rgba(241,245,249,0.25)' : 'rgba(51,65,85,0.25)';
+            const normalFontColor = isDark ? '#f1f5f9' : '#334155';
+
+            const nodeUpdates = nodes.get().map(node => {
+                const active = node.group === groupKey;
+                return {
+                    id: node.id,
+                    color: active ? undefined : {
+                        background: fadedNodeColor,
+                        border: fadedNodeColor,
+                        highlight: { background: fadedNodeColor, border: fadedNodeColor },
+                        hover: { background: fadedNodeColor, border: fadedNodeColor }
+                    },
+                    font: { color: active ? normalFontColor : fadedFontColor }
+                };
+            });
+
+            const edgeUpdates = edges.get().map(edge => ({
+                id: edge.id,
+                color: {
+                    color: isDark ? 'rgba(71,85,105,0.15)' : 'rgba(203,213,225,0.25)',
+                    highlight: isDark ? 'rgba(71,85,105,0.15)' : 'rgba(203,213,225,0.25)',
+                    hover: isDark ? 'rgba(71,85,105,0.15)' : 'rgba(203,213,225,0.25)',
+                    opacity: 1
+                },
+                width: 1
+            }));
+
+            nodes.update(nodeUpdates);
+            edges.update(edgeUpdates);
+        }
+
+        function renderGroupButtons(data) {
+            const container = document.getElementById('group-filters');
+            container.innerHTML = '';
+            activeGroupFilter = null;
+
+            const groupTitles = data?.metadata?.groups || {};
+            const uniqueGroups = [...new Set((data.nodes || []).map(n => n.group).filter(Boolean))];
+
+            if (uniqueGroups.length === 0) {
+                container.classList.add('hidden');
+                return;
+            }
+
+            uniqueGroups.forEach(groupKey => {
+                const label = groupTitles[groupKey] || groupKey;
+                const btn = document.createElement('button');
+                btn.dataset.group = groupKey;
+                btn.textContent = label;
+                btn.className = 'px-3 py-1.5 text-xs font-semibold rounded-full border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-indigo-900/40 hover:border-indigo-400 dark:hover:border-indigo-500 transition-all';
+
+                btn.addEventListener('click', () => {
+                    if (activeGroupFilter === groupKey) {
+                        activeGroupFilter = null;
+                        resetHighlight();
+                        container.querySelectorAll('button').forEach(b => b.classList.remove('bg-indigo-600', 'dark:bg-indigo-700', 'text-white', 'border-indigo-600', 'dark:border-indigo-500'));
+                    } else {
+                        activeGroupFilter = groupKey;
+                        highlightGroup(groupKey);
+                        container.querySelectorAll('button').forEach(b => {
+                            const isActive = b.dataset.group === groupKey;
+                            b.classList.toggle('bg-indigo-600', isActive);
+                            b.classList.toggle('dark:bg-indigo-700', isActive);
+                            b.classList.toggle('text-white', isActive);
+                            b.classList.toggle('border-indigo-600', isActive);
+                        });
+                    }
+                });
+
+                container.appendChild(btn);
+            });
+
+            container.classList.remove('hidden');
+        }
+
         let currentGraphData = null;
 
         // 核心功能：讀取並載入 JSON
@@ -501,6 +585,7 @@
                 edges.clear();
                 nodes.add(data.nodes);
                 edges.add(data.edges);
+                renderGroupButtons(data);
 
                 const networkOptions = getNetworkOptions(data);
 
@@ -525,7 +610,9 @@
                                 </div>
                             `;
                         } else {
+                            activeGroupFilter = null;
                             resetHighlight();
+                            document.querySelectorAll('#group-filters button').forEach(b => b.classList.remove('bg-indigo-600', 'dark:bg-indigo-700', 'text-white', 'border-indigo-600'));
                             infoContent.innerHTML = `<span class="italic">請點擊圖中人物查看詳細資訊...</span>`;
                         }
                     });
