@@ -570,6 +570,8 @@
 
                             const description = nodeData.bio || nodeData.title || 'No description available.';
 
+                            const groupName = (data.metadata?.groups && data.metadata.groups[nodeData.group]) || nodeData.group || 'General';
+
                             infoContent.innerHTML = `
                                 <div class="animate-in fade-in duration-300">
                                     <b class="text-xl text-slate-900 dark:text-white block mb-1">${nodeData.label}</b>
