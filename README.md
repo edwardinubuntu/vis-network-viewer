@@ -89,7 +89,7 @@ Build the image and run a container exposing port 8000:
 docker build --no-cache -t network-viewer .
 
 # Run in the background
-docker run -d --rm -p 8000:8000 --name network-viewer network-viewer
+docker run -d -p 8000:8000 --name network-viewer network-viewer
 ```
 
 The app will be available at `http://localhost:8000`.
@@ -97,5 +97,5 @@ The app will be available at `http://localhost:8000`.
 To stop the container:
 
 ```bash
-docker stop network-viewer
+docker stop network-viewer && docker rm network-viewer
 ```
