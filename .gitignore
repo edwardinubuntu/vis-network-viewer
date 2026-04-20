@@ -24,7 +24,8 @@ files/
 *.coverage
 *htmlcov
 
-.claude
+.claude/settings.local.json
+.claude/worktrees/
 .obsidian
 .vscode
 apidoc
