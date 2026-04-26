@@ -23,15 +23,7 @@
             transition: background-color 0.3s ease;
         }
 
-        .graph-layout {
-            align-items: stretch;
-        }
-
         @media (min-width: 1024px) {
-            .graph-layout {
-                grid-template-columns: minmax(0, 1fr) 320px;
-            }
-
             #network-box {
                 height: 78vh;
                 min-height: 720px;
@@ -40,13 +32,19 @@
         }
 
         @media (min-width: 1440px) {
-            .graph-layout {
-                grid-template-columns: minmax(0, 1fr) 340px;
-            }
-
             #network-box {
                 height: 82vh;
             }
+        }
+
+        /* Slide-in right side panel */
+        .side-panel {
+            transition: transform 0.3s ease-in-out;
+            transform: translateX(100%);
+        }
+
+        .side-panel.open {
+            transform: translateX(0);
         }
 
         ::-webkit-scrollbar {
@@ -156,23 +154,25 @@
         <!-- Group filter buttons -->
         <div id="group-filters" class="hidden mb-4 flex flex-wrap gap-2"></div>
 
-        <div class="graph-layout grid grid-cols-1 gap-6 xl:gap-8">
-            <div class="graph-main min-w-0">
-                <div id="network-box"
-                    class="bg-white dark:bg-slate-800 shadow-inner border border-slate-200 dark:border-slate-700 rounded-xl">
-                </div>
+        <div class="graph-main min-w-0">
+            <div id="network-box"
+                class="bg-white dark:bg-slate-800 shadow-inner border border-slate-200 dark:border-slate-700 rounded-xl">
             </div>
+        </div>
+    </div>
 
-            <!-- Info panel -->
-            <aside class="graph-side min-w-0">
-                <div id="info-panel"
-                    class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md h-full border border-slate-200 dark:border-slate-700 transition-colors">
-                    <h2 class="text-xl font-bold text-indigo-900 dark:text-indigo-400 mb-4">Node Details</h2>
-                    <div id="info-content" class="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">
-                        Click a node to view details...
-                    </div>
-                </div>
-            </aside>
+    <!-- Slide-in side panel for Node Details -->
+    <div id="side-panel"
+        class="side-panel fixed right-0 top-0 h-full w-full sm:w-96 bg-white dark:bg-slate-800 shadow-2xl border-l border-slate-200 dark:border-slate-700 z-30 flex flex-col">
+        <div
+            class="p-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+            <h2 class="text-xl font-bold text-indigo-900 dark:text-indigo-400">Node Details</h2>
+            <button id="side-panel-close"
+                class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-bold text-lg leading-none p-1">✕</button>
+        </div>
+        <div id="info-content"
+            class="p-6 flex-grow overflow-y-auto text-slate-600 dark:text-slate-300 text-sm leading-relaxed">
+            <span class="italic">Click a node to view details...</span>
         </div>
     </div>
 
@@ -562,7 +562,9 @@
 
                     network.on("click", (params) => {
                         const infoContent = document.getElementById('info-content');
+                        const sidePanel = document.getElementById('side-panel');
                         if (params.nodes.length > 0) {
+                            sidePanel.classList.add('open');
                             const nodeId = params.nodes[0];
                             const nodeData = nodes.get(nodeId);
 
@@ -581,10 +583,13 @@
                             if (connectedEdges.length > 0) {
                                 const rows = connectedEdges.map(e => {
                                     const label = e.label || '—';
-                                    const title = e.title || '—';
+                                    const title = e.title || '';
+                                    const titleHtml = title
+                                        ? `<span class="text-slate-500 dark:text-slate-400 truncate">— ${title}</span>`
+                                        : '';
                                     return `<li class="flex gap-2 py-1 border-b border-slate-100 dark:border-slate-700 last:border-0">
                                         <span class="font-medium text-indigo-700 dark:text-indigo-300 shrink-0">${label}</span>
-                                        <span class="text-slate-500 dark:text-slate-400 truncate">${title}</span>
+                                        ${titleHtml}
                                     </li>`;
                                 }).join('');
                                 edgesHtml = `
@@ -606,7 +611,7 @@
                             activeGroupFilter = null;
                             resetHighlight();
                             document.querySelectorAll('#group-filters button').forEach(b => b.classList.remove('bg-indigo-600', 'dark:bg-indigo-700', 'text-white', 'border-indigo-600'));
-                            infoContent.innerHTML = `<span class="italic">Click a node to view details...</span>`;
+                            sidePanel.classList.remove('open');
                         }
                     });
                 } else {
@@ -622,6 +627,16 @@
         }
 
         selector.addEventListener('change', (e) => loadData(e.target.value));
+
+        document.getElementById('side-panel-close').addEventListener('click', () => {
+            document.getElementById('side-panel').classList.remove('open');
+            if (network) {
+                network.unselectAll();
+                resetHighlight();
+            }
+            activeGroupFilter = null;
+            document.querySelectorAll('#group-filters button').forEach(b => b.classList.remove('bg-indigo-600', 'dark:bg-indigo-700', 'text-white', 'border-indigo-600'));
+        });
 
         window.onload = () => {
             initTheme();

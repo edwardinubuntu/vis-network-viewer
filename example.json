@@ -1,0 +1,86 @@
+{
+  "title": "Example Network — Three Kingdoms Mini Map",
+  "metadata": {
+    "groups": {
+      "wei": "Wei Kingdom",
+      "shu": "Shu Kingdom",
+      "wu":  "Wu Kingdom"
+    }
+  },
+  "options": {
+    "nodes": { "size": 24 },
+    "physics": { "barnesHut": { "springLength": 180 } }
+  },
+  "nodes": [
+    {
+      "id": "cao_cao",
+      "label": "Cao Cao",
+      "group": "wei",
+      "bio": "Warlord of the north, founder of the Wei state. Known for political pragmatism and military tactics.",
+      "color": "#3b82f6",
+      "shape": "dot"
+    },
+    {
+      "id": "liu_bei",
+      "label": "Liu Bei",
+      "group": "shu",
+      "bio": "Distant Han royal who founded Shu Han. Famous for his benevolent leadership style.",
+      "color": "#22c55e"
+    },
+    {
+      "id": "sun_quan",
+      "label": "Sun Quan",
+      "group": "wu",
+      "bio": "Heir to the Sun family in the southeast. Consolidated Wu through diplomacy and naval power.",
+      "color": "#f97316"
+    },
+    {
+      "id": "zhuge_liang",
+      "label": "Zhuge Liang",
+      "group": "shu",
+      "title": "Chancellor of Shu Han, master strategist.",
+      "color": "#22c55e",
+      "shape": "diamond"
+    },
+    {
+      "id": "zhou_yu",
+      "label": "Zhou Yu",
+      "group": "wu",
+      "title": "Wu's grand commander at the Battle of Red Cliffs.",
+      "color": "#f97316",
+      "shape": "diamond"
+    }
+  ],
+  "edges": [
+    {
+      "from": "cao_cao",
+      "to": "liu_bei",
+      "label": "rivals",
+      "title": "Long-standing political and military rivalry across northern China.",
+      "arrows": "to;from"
+    },
+    {
+      "from": "liu_bei",
+      "to": "sun_quan",
+      "label": "allied",
+      "title": "Allied against Cao Cao at the Battle of Red Cliffs (208 AD).",
+      "dashes": true
+    },
+    {
+      "from": "cao_cao",
+      "to": "sun_quan",
+      "label": "invades"
+    },
+    {
+      "from": "liu_bei",
+      "to": "zhuge_liang",
+      "label": "recruits",
+      "title": "Liu Bei recruited Zhuge Liang via the 'three visits to the thatched cottage'."
+    },
+    {
+      "from": "sun_quan",
+      "to": "zhou_yu",
+      "label": "commands"
+    }
+  ]
+}
